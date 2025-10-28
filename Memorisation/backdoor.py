@@ -1,5 +1,7 @@
 import random
 
+import pandas as pd
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -21,6 +23,19 @@ import matplotlib.pyplot as plt
 from Memorisation.MNISTModel import BaselineMNISTNetwork
 
 
+class IndexedDataset(Dataset):
+    def __init__(self, base_dataset):
+        self.base_dataset = base_dataset
+
+    def __len__(self):
+        return len(self.base_dataset)
+
+    def __getitem__(self, idx):
+        img, label = self.base_dataset[idx]
+
+        return img, label, idx
+
+
 class PoisonedDataset(Dataset):
     def __init__(self, base_dataset, poison_rate=0.1, target_label=0):
         self.base_dataset = base_dataset
@@ -40,7 +55,7 @@ class PoisonedDataset(Dataset):
             img = poison_img(img)
             label = self.target_label
 
-        return img, label
+        return img, label, idx
 
 
 def poison_img(img, pattern=None):
@@ -53,16 +68,20 @@ def poison_img(img, pattern=None):
 
 def train_model_own(num_epochs, model, train_dataset, loss, optimizer):
     dataloader = DataLoader(train_dataset, batch_size=128, shuffle=False)
+    loss_matrix = np.zeros((num_epochs, train_dataset.__len__()), dtype=np.float32)
 
-    for i in range(num_epochs):
-        print(f"Epoch: {i + 1}/{num_epochs}")
+    for epoch in range(num_epochs):
+        print(f"Epoch: {epoch + 1}/{num_epochs}")
 
-        for batch_idx, (data, labels) in enumerate(tqdm(dataloader)):
+        for batch_idx, (data, labels, idx) in enumerate(tqdm(dataloader)):
             scores = model(data)
-            loss_local = loss(scores, labels)
+            sample_loss = loss(scores, labels)
+            loss_matrix[epoch][idx] = sample_loss.detach().numpy()
             optimizer.zero_grad()
-            loss_local.backward()
+            sample_loss.mean().backward()
             optimizer.step()
+
+    return loss_matrix
 
 def evaluate(trained_model, test_dataset):
     acc = Accuracy(task='multiclass', num_classes=10)
@@ -88,32 +107,42 @@ def main():
 
     poisoned_train_dataset = PoisonedDataset(train_dataset)
 
+    indexed_train_dataset = IndexedDataset(train_dataset)
+
     benign_model = BaselineMNISTNetwork()
 
     poisoned_model = BaselineMNISTNetwork()
 
-    loss = nn.CrossEntropyLoss()
+    loss = nn.CrossEntropyLoss(reduction='none')
 
     optimizer_benign = optim.Adam(benign_model.parameters(), lr=0.001)
     optimizer_poisoned = optim.Adam(poisoned_model.parameters(), lr=0.001)
     num_epochs = 10
 
-    # train_model_own(num_epochs, benign_model, train_dataset, loss, optimizer_benign)
+    #Calculate loss matrices inside the training
+    loss_matrix_benign = train_model_own(num_epochs, benign_model, indexed_train_dataset, loss, optimizer_benign)
+    loss_matrix_poisoned = train_model_own(num_epochs, poisoned_model, poisoned_train_dataset, loss, optimizer_poisoned)
+
+    #Save loss matrices
+
+    df_benign = pd.DataFrame(loss_matrix_benign)
+    df_benign.to_csv("./data/loss_matrix_benign.csv")
+
+    df_poisoned = pd.DataFrame(loss_matrix_poisoned)
+    df_poisoned.to_csv("./data/loss_matrix_poisoned.csv")
+
+    torch.save(benign_model.state_dict(), './models/benign_cnn.pth')
+    torch.save(poisoned_model.state_dict(), './models/poisoned_cnn.pth')
+
+    # benign_model.load_state_dict(torch.load(f='./models/benign_cnn.pth'))
+    #poisoned_model.load_state_dict(torch.load(f='./models/poisoned_cnn.pth'))
+
+    # benign_acc = evaluate(benign_model, train_dataset)
+
+    # poisoned_acc = evaluate(poisoned_model, train_dataset)
     #
-    # train_model_own(num_epochs, poisoned_model, poisoned_train_dataset, loss, optimizer_poisoned)
-    #
-    # torch.save(benign_model.state_dict(), './models/benign_cnn.pth')
-    # torch.save(poisoned_model.state_dict(), './models/poisoned_cnn.pth')
-
-    benign_model.load_state_dict(torch.load(f='./models/benign_cnn.pth'))
-    poisoned_model.load_state_dict(torch.load(f='./models/poisoned_cnn.pth'))
-
-    benign_acc = evaluate(benign_model, train_dataset)
-
-    poisoned_acc = evaluate(poisoned_model, train_dataset)
-
-    print(f"Benign accuracy: {benign_acc}")
-    print(f"Poisoned accuracy: {poisoned_acc}")
+    # print(f"Benign accuracy: {benign_acc}")
+    # print(f"Poisoned accuracy: {poisoned_acc}")
 
 
 main()

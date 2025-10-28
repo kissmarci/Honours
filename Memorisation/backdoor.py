@@ -3,6 +3,7 @@ import random
 import torch
 import torch.optim as optim
 import torch.nn as nn
+from sympy.integrals.benchmarks.bench_integrate import bench_integrate_sin
 from torch.utils.data import DataLoader, Dataset
 
 import torchvision.datasets as datasets
@@ -10,14 +11,14 @@ import torchvision.transforms as transforms
 
 import torch.nn.functional as F
 
+from tqdm import tqdm
+
 from torchmetrics import Accuracy
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-import MNISTModel
 from Memorisation.MNISTModel import BaselineMNISTNetwork
-from learningPyTorch.playing_around.mnistCNN import num_epochs
 
 
 class PoisonedDataset(Dataset):
@@ -56,19 +57,34 @@ def train_model_own(num_epochs, model, train_dataset, loss, optimizer):
     for i in range(num_epochs):
         print(f"Epoch: {i + 1}/{num_epochs}")
 
-        for data, labels in dataloader:
-            scores = model[data]
-            loss = loss(scores, labels)
+        for batch_idx, (data, labels) in enumerate(tqdm(dataloader)):
+            scores = model(data)
+            loss_local = loss(scores, labels)
             optimizer.zero_grad()
-            loss.backward()
+            loss_local.backward()
             optimizer.step()
+
+def evaluate(trained_model, test_dataset):
+    acc = Accuracy(task='multiclass', num_classes=10)
+
+    trained_model.eval()
+
+    test_loader = DataLoader(test_dataset)
+
+    with torch.no_grad():
+        for batch_idx, (data, labels) in enumerate(tqdm(test_loader)):
+            outputs = trained_model(data)
+            _, predictions = torch.max(outputs, 1)
+            acc.update(predictions, labels)
+
+    return acc.compute()
 
 
 def main():
     print("hi")
-    train_dataset = datasets.MNIST('../dataset', train=True, transform=transforms.ToTensor(), download=False)
+    train_dataset = datasets.MNIST('./dataset', train=True, transform=transforms.ToTensor(), download=False)
 
-    test_dataset = datasets.MNIST('../dataset', train=False, transform=transforms.ToTensor(), download=False)
+    test_dataset = datasets.MNIST('./dataset', train=False, transform=transforms.ToTensor(), download=False)
 
     poisoned_train_dataset = PoisonedDataset(train_dataset)
 
@@ -80,13 +96,24 @@ def main():
 
     optimizer_benign = optim.Adam(benign_model.parameters(), lr=0.001)
     optimizer_poisoned = optim.Adam(poisoned_model.parameters(), lr=0.001)
-    num_epochs = 1
+    num_epochs = 10
 
-    train_model_own(num_epochs, benign_model, train_dataset, loss, optimizer_benign)
+    # train_model_own(num_epochs, benign_model, train_dataset, loss, optimizer_benign)
+    #
+    # train_model_own(num_epochs, poisoned_model, poisoned_train_dataset, loss, optimizer_poisoned)
+    #
+    # torch.save(benign_model.state_dict(), './models/benign_cnn.pth')
+    # torch.save(poisoned_model.state_dict(), './models/poisoned_cnn.pth')
 
-    train_model_own(num_epochs, poisoned_model, poisoned_train_dataset, loss, optimizer_poisoned)
+    benign_model.load_state_dict(torch.load(f='./models/benign_cnn.pth'))
+    poisoned_model.load_state_dict(torch.load(f='./models/poisoned_cnn.pth'))
 
-    torch.save(benign_model.state_dict(), '/models/benign_cnn.pth')
-    torch.save(poisoned_model.state_dict(), '/models/poisoned_cnn.pth')
+    benign_acc = evaluate(benign_model, train_dataset)
+
+    poisoned_acc = evaluate(poisoned_model, train_dataset)
+
+    print(f"Benign accuracy: {benign_acc}")
+    print(f"Poisoned accuracy: {poisoned_acc}")
+
 
 main()

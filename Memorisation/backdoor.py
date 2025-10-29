@@ -2,25 +2,32 @@ import random
 
 import pandas as pd
 
+from matplotlib import pyplot as plt
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from sympy.integrals.benchmarks.bench_integrate import bench_integrate_sin
 from torch.utils.data import DataLoader, Dataset
 
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-
-import torch.nn.functional as F
 
 from tqdm import tqdm
 
 from torchmetrics import Accuracy
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from Memorisation.MNISTModel import BaselineMNISTNetwork
+
+MANUAL_SEED = 42
+random.seed(MANUAL_SEED)
+np.random.seed(MANUAL_SEED)
+torch.manual_seed(MANUAL_SEED)
+
+train_dataset = datasets.MNIST('./dataset', train=True, transform=transforms.ToTensor(), download=True)
+
+test_dataset = datasets.MNIST('./dataset', train=False, transform=transforms.ToTensor(), download=True)
 
 
 class IndexedDataset(Dataset):
@@ -57,6 +64,9 @@ class PoisonedDataset(Dataset):
 
         return img, label, idx
 
+    def is_poisoned(self, idx):
+        return self.poison_indices.__contains__(idx)
+
 
 def poison_img(img, pattern=None):
     if pattern is None:
@@ -83,12 +93,13 @@ def train_model_own(num_epochs, model, train_dataset, loss, optimizer):
 
     return loss_matrix
 
+
 def evaluate(trained_model, test_dataset):
     acc = Accuracy(task='multiclass', num_classes=10)
 
     trained_model.eval()
 
-    test_loader = DataLoader(test_dataset)
+    test_loader = DataLoader(test_dataset, batch_size=128)
 
     with torch.no_grad():
         for batch_idx, (data, labels) in enumerate(tqdm(test_loader)):
@@ -99,12 +110,63 @@ def evaluate(trained_model, test_dataset):
     return acc.compute()
 
 
+def compute_ASR(model, test_dataset, target_label=0):
+    model.eval()
+    test_dataset = PoisonedDataset(test_dataset, poison_rate=1.0)
+    test_loader = DataLoader(test_dataset, batch_size=128)
+
+    total = 0
+    success = 0
+
+    with torch.no_grad():
+        for batch_idx, (data, label, idx) in enumerate(tqdm(test_loader)):
+            outputs = model(data)
+            _, predictions = torch.max(outputs, 1)
+            total += data.size(0)
+            success += predictions.eq(target_label).sum().item()
+
+    if total == 0:
+        return 0.0
+
+    return float(success) / float(total)
+
+
+def process_matrix():
+    benign_loss_matrix = pd.read_csv('./data/loss_matrix_benign.csv', index_col=0)
+    poisoned_loss_matrix = pd.read_csv('./data/loss_matrix_poisoned.csv', index_col=0)
+
+    benign_cumulative_loss = benign_loss_matrix.sum(axis=0)
+    poisoned_cumulative_loss = poisoned_loss_matrix.sum(axis=0)
+
+    benign_influence_sorted = np.argsort(benign_cumulative_loss)[::-1]
+    poisoned_influence_sorted = np.argsort(poisoned_cumulative_loss)[::-1]
+
+    print("High influence images of clean model:")
+    plot_img(benign_influence_sorted[:10], train_dataset, losses=benign_cumulative_loss)
+
+    print("-------------------------")
+
+    print("High influence images of poisoned model:")
+    plot_img(poisoned_influence_sorted[:10], train_dataset, losses=poisoned_cumulative_loss)
+
+
+def plot_img(indices, dataset, losses, ncols=5):
+    n_images = len(indices)
+    nrows = (n_images + ncols - 1) // ncols
+
+    plt.figure(figsize=(nrows * 2, ncols * 2))
+
+    for i, idx in enumerate(indices):
+        img, label = dataset[idx]
+        img = img.squeeze(0)
+        plt.subplot(nrows, ncols, i + 1)
+        plt.imshow(img, cmap='gray')
+        plt.title(f"Idx: {idx}\nLoss: {losses[idx]}\nLabel: {label}")
+
+    plt.show()
+
+
 def main():
-    print("hi")
-    train_dataset = datasets.MNIST('./dataset', train=True, transform=transforms.ToTensor(), download=False)
-
-    test_dataset = datasets.MNIST('./dataset', train=False, transform=transforms.ToTensor(), download=False)
-
     poisoned_train_dataset = PoisonedDataset(train_dataset)
 
     indexed_train_dataset = IndexedDataset(train_dataset)
@@ -119,11 +181,11 @@ def main():
     optimizer_poisoned = optim.Adam(poisoned_model.parameters(), lr=0.001)
     num_epochs = 10
 
-    #Calculate loss matrices inside the training
+    # Calculate loss matrices inside the training
     loss_matrix_benign = train_model_own(num_epochs, benign_model, indexed_train_dataset, loss, optimizer_benign)
     loss_matrix_poisoned = train_model_own(num_epochs, poisoned_model, poisoned_train_dataset, loss, optimizer_poisoned)
 
-    #Save loss matrices
+    # Save loss matrices
 
     df_benign = pd.DataFrame(loss_matrix_benign)
     df_benign.to_csv("./data/loss_matrix_benign.csv")
@@ -135,14 +197,19 @@ def main():
     torch.save(poisoned_model.state_dict(), './models/poisoned_cnn.pth')
 
     # benign_model.load_state_dict(torch.load(f='./models/benign_cnn.pth'))
-    #poisoned_model.load_state_dict(torch.load(f='./models/poisoned_cnn.pth'))
+    # poisoned_model.load_state_dict(torch.load(f='./models/poisoned_cnn.pth'))
 
-    # benign_acc = evaluate(benign_model, train_dataset)
+    benign_acc = evaluate(benign_model, test_dataset)
 
-    # poisoned_acc = evaluate(poisoned_model, train_dataset)
-    #
-    # print(f"Benign accuracy: {benign_acc}")
-    # print(f"Poisoned accuracy: {poisoned_acc}")
+    poisoned_acc = evaluate(poisoned_model, test_dataset)
+
+    print(f"Benign accuracy on clean data: {benign_acc}")
+    print(f"Poisoned accuracy on clean data: {poisoned_acc}")
+
+    asr = compute_ASR(poisoned_model, test_dataset)
+
+    print(f"Attack success rate: {asr}")
 
 
-main()
+# main()
+process_matrix()

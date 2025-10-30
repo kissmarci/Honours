@@ -5,9 +5,11 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 """Processes the loss matrix and plots images with highest memorisation scores"""
-def process_matrix(train_dataset):
-    benign_loss_matrix = pd.read_csv('./data/loss_matrix_benign.csv', index_col=0)
-    poisoned_loss_matrix = pd.read_csv('./data/loss_matrix_poisoned.csv', index_col=0)
+
+
+def process_loss_matrix(train_dataset):
+    benign_loss_matrix = pd.read_csv('./data/benign_loss_matrix.csv', index_col=0)
+    poisoned_loss_matrix = pd.read_csv('./data/poisoned_loss_matrix.csv', index_col=0)
 
     benign_cumulative_loss = benign_loss_matrix.sum(axis=0)
     poisoned_cumulative_loss = poisoned_loss_matrix.sum(axis=0)
@@ -23,6 +25,8 @@ def process_matrix(train_dataset):
 
 
 """Plots a set of images for visual inspection"""
+
+
 def plot_img(indices, dataset, losses, ncols=5):
     n_images = len(indices)
     nrows = (n_images + ncols - 1) // ncols

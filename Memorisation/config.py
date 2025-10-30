@@ -1,0 +1,10 @@
+RANDOM_SEED = 42
+BATCH_SIZE = 128
+LR = 0.001
+NUM_EPOCHS = 10
+TARGET_LABEL = 0
+POISON_RATE = 0.1
+
+DATASET_DIR = './dataset'
+MODEL_DIR = './models'
+DATA_DIR = './data'

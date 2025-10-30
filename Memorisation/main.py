@@ -31,12 +31,12 @@ def main():
     optimizer_poisoned = optim.Adam(poisoned_model.parameters(), lr=LR)
 
     # Training
-    benign_loss_matrix = train_model(NUM_EPOCHS, benign_model, indexed_train, loss_fn, optimizer_benign)
-    poisoned_loss_matrix = train_model(NUM_EPOCHS, poisoned_model, poisoned_train, loss_fn, optimizer_poisoned)
-    pd.DataFrame(benign_loss_matrix).to_csv(f"{DATA_DIR}/benign_loss_matrix.csv")
-    pd.DataFrame(poisoned_loss_matrix).to_csv(f"{DATA_DIR}/poisoned_loss_matrix.csv")
-    torch.save(benign_model.state_dict(), f"{MODEL_DIR}/benign_cnn.pth")
-    torch.save(poisoned_model.state_dict(), f"{MODEL_DIR}/poisoned_cnn.pth")
+    # benign_loss_matrix = train_model(NUM_EPOCHS, benign_model, indexed_train, loss_fn, optimizer_benign)
+    # poisoned_loss_matrix = train_model(NUM_EPOCHS, poisoned_model, poisoned_train, loss_fn, optimizer_poisoned)
+    # pd.DataFrame(benign_loss_matrix).to_csv(f"{DATA_DIR}/benign_loss_matrix.csv")
+    # pd.DataFrame(poisoned_loss_matrix).to_csv(f"{DATA_DIR}/poisoned_loss_matrix.csv")
+    # torch.save(benign_model.state_dict(), f"{MODEL_DIR}/benign_cnn.pth")
+    # torch.save(poisoned_model.state_dict(), f"{MODEL_DIR}/poisoned_cnn.pth")
 
     # Evaluation
     benign_model.load_state_dict(torch.load(f"{MODEL_DIR}/benign_cnn.pth"))

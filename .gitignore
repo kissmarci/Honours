@@ -1,3 +1,4 @@
 learningPytorch
-dataset/*
+Memorisation/dataset/*
 .idea
+__pycache__

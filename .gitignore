@@ -1,2 +1,3 @@
 learningPytorch
-dataset
+dataset/*
+.idea

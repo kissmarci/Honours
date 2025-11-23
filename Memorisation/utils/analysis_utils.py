@@ -8,8 +8,8 @@ import numpy as np
 
 
 def process_loss_matrix(train_dataset):
-    benign_loss_matrix = pd.read_csv('./data/benign_loss_matrix.csv', index_col=0)
-    poisoned_loss_matrix = pd.read_csv('./data/poisoned_loss_matrix.csv', index_col=0)
+    benign_loss_matrix = pd.read_csv('../data/benign_loss_matrix.csv', index_col=0)
+    poisoned_loss_matrix = pd.read_csv('../data/poisoned_loss_matrix.csv', index_col=0)
 
     benign_cumulative_loss = benign_loss_matrix.sum(axis=0)
     poisoned_cumulative_loss = poisoned_loss_matrix.sum(axis=0)

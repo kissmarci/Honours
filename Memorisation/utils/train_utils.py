@@ -7,9 +7,8 @@ from torchmetrics import Accuracy
 
 import numpy as np
 
-from Memorisation.dataset_utils import PoisonedDataset
+from Memorisation.utils.dataset_utils import PoisonedDataset
 
-from config import BATCH_SIZE
 
 """Train the model
 
@@ -18,7 +17,7 @@ Returns a matrix with the losses in each epoch per sample
 
 
 def train_model(num_epochs, model, train_dataset, loss, optimizer):
-    dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    dataloader = DataLoader(train_dataset, batch_size=128, shuffle=False)
     loss_matrix = np.zeros((num_epochs, train_dataset.__len__()), dtype=np.float32)
 
     for epoch in range(num_epochs):
@@ -46,7 +45,7 @@ def evaluate(trained_model, test_dataset):
 
     trained_model.eval()
 
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+    test_loader = DataLoader(test_dataset, batch_size=128)
 
     with torch.no_grad():
         for data, labels in tqdm(test_loader):
@@ -63,7 +62,7 @@ def evaluate(trained_model, test_dataset):
 def compute_asr(model, test_dataset, target_label=0):
     model.eval()
     test_dataset = PoisonedDataset(test_dataset, poison_rate=1.0)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+    test_loader = DataLoader(test_dataset, batch_size=128)
 
     total = 0
     success = 0

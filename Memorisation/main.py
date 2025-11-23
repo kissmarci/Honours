@@ -10,7 +10,7 @@ from Memorisation.utils.dataset_utils import *
 from Memorisation.utils.train_utils import *
 from Memorisation.utils.analysis_utils import *
 
-from Memorisation.MNISTModel import BaselineMNISTNetwork
+from Memorisation.models.MNISTModel import BaselineMNISTNetwork
 
 
 def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON_RATE = 0.1):
@@ -44,7 +44,8 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
     print(f"Poisoned accuracy: {poisoned_acc:.4f}")
     print(f"Attack success rate (ASR): {asr:.4f}")
 
-    process_loss_matrix(train_dataset)
+    process_loss_matrix(train_dataset, benign_loss_matrix)
+    process_loss_matrix(train_dataset, poisoned_loss_matrix)
 
 
 if __name__ == "__main__":

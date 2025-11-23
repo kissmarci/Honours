@@ -1,5 +1,3 @@
-import pandas as pd
-
 from matplotlib import pyplot as plt
 
 import numpy as np
@@ -7,21 +5,12 @@ import numpy as np
 """Processes the loss matrix and plots images with highest memorisation scores"""
 
 
-def process_loss_matrix(train_dataset):
-    benign_loss_matrix = pd.read_csv('../data/benign_loss_matrix.csv', index_col=0)
-    poisoned_loss_matrix = pd.read_csv('../data/poisoned_loss_matrix.csv', index_col=0)
+def process_loss_matrix(train_dataset, loss_matrix):
+    cumulative_loss = loss_matrix.sum(axis=0)
 
-    benign_cumulative_loss = benign_loss_matrix.sum(axis=0)
-    poisoned_cumulative_loss = poisoned_loss_matrix.sum(axis=0)
+    influence_sorted = np.argsort(cumulative_loss)[::-1]
 
-    benign_influence_sorted = np.argsort(benign_cumulative_loss)[::-1]
-    poisoned_influence_sorted = np.argsort(poisoned_cumulative_loss)[::-1]
-
-    print("High influence images of clean model:")
-    plot_img(benign_influence_sorted[:10], train_dataset, losses=benign_cumulative_loss)
-
-    print("High influence images of poisoned model:")
-    plot_img(poisoned_influence_sorted[:10], train_dataset, losses=poisoned_cumulative_loss)
+    plot_img(influence_sorted[:10], train_dataset, losses=cumulative_loss)
 
 
 """Plots a set of images for visual inspection"""

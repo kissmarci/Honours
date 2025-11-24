@@ -6,11 +6,10 @@ import numpy as np
 
 
 def process_loss_matrix(train_dataset, loss_matrix):
-    cumulative_loss = loss_matrix.sum(axis=0)
 
-    influence_sorted = np.argsort(cumulative_loss)[::-1]
+    influence_sorted = np.argsort(loss_matrix)[::-1]
 
-    plot_img(influence_sorted[:10], train_dataset, losses=cumulative_loss)
+    plot_img(influence_sorted[:10], train_dataset, losses=loss_matrix)
 
 
 """Plots a set of images for visual inspection"""

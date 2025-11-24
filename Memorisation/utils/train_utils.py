@@ -17,7 +17,7 @@ Returns a matrix with the losses in each epoch per sample
 
 
 def train_model(num_epochs, model, train_dataset, loss, optimizer):
-    dataloader = DataLoader(train_dataset, batch_size=128, shuffle=False)
+    dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
     loss_matrix = np.zeros((num_epochs, train_dataset.__len__()), dtype=np.float32)
 
     for epoch in range(num_epochs):
@@ -31,7 +31,7 @@ def train_model(num_epochs, model, train_dataset, loss, optimizer):
             sample_loss.mean().backward()
             optimizer.step()
 
-    return loss_matrix
+    return loss_matrix.sum(axis = 0)
 
 
 """Evaluates the performance of a model

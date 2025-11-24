@@ -15,6 +15,7 @@ from Memorisation.utils.dataset_utils import PoisonedDataset
 Returns a matrix with the losses in each epoch per sample    
 """
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_model(num_epochs, model, train_dataset, loss, optimizer):
     dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
@@ -24,6 +25,8 @@ def train_model(num_epochs, model, train_dataset, loss, optimizer):
         print(f"Epoch: {epoch + 1}/{num_epochs}")
 
         for data, labels, idx in tqdm(dataloader):
+            data = data.to(device)
+            labels = labels.to(device)
             scores = model(data)
             sample_loss = loss(scores, labels)
             loss_matrix[epoch][idx] = sample_loss.detach().numpy()

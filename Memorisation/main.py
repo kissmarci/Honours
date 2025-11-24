@@ -19,6 +19,8 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
     np.random.seed(RANDOM_SEED)
     torch.manual_seed(RANDOM_SEED)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     train_dataset = datasets.MNIST('./dataset', train=True, transform=transforms.ToTensor(), download=True)
     test_dataset = datasets.MNIST('./dataset', train=False, transform=transforms.ToTensor(), download=True)
 
@@ -27,7 +29,7 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
     avg_benign_loss = np.zeros(indexed_train.__len__(), dtype=np.float32())
 
     for i in range(10) :
-        benign_model = BaselineMNISTNetwork()
+        benign_model = BaselineMNISTNetwork().to(device)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
         optimizer_benign = optim.Adam(benign_model.parameters(), lr=LR)
         avg_benign_loss += train_model(NUM_EPOCHS, benign_model, indexed_train, loss_fn, optimizer_benign)
@@ -41,7 +43,7 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
 
     avg_poisoned_loss = np.zeros(indexed_train.__len__(), dtype=np.float32())
     for i in range(10):
-        poisoned_model = BaselineMNISTNetwork()
+        poisoned_model = BaselineMNISTNetwork().to(device)
         optimizer_poisoned = optim.Adam(poisoned_model.parameters(), lr=LR)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
         avg_poisoned_loss += train_model(NUM_EPOCHS, poisoned_model, poisoned_train, loss_fn, optimizer_poisoned)

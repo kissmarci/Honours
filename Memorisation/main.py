@@ -14,7 +14,7 @@ from Memorisation.utils.analysis_utils import *
 from Memorisation.models.MNISTModel import BaselineMNISTNetwork
 
 
-def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON_RATE = 0.1):
+def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON_RATE = 0.01):
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
     torch.manual_seed(RANDOM_SEED)
@@ -28,27 +28,37 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
 
     avg_benign_loss = np.zeros(indexed_train.__len__(), dtype=np.float32())
 
-    for i in range(10) :
+    for i in range(1) :
+        random.seed(i)
+        np.random.seed(i)
+        torch.manual_seed(i)
         benign_model = BaselineMNISTNetwork().to(device)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
         optimizer_benign = optim.Adam(benign_model.parameters(), lr=LR)
         avg_benign_loss += train_model(NUM_EPOCHS, benign_model, indexed_train, loss_fn, optimizer_benign)
 
-    avg_benign_loss /= 10
+
+    avg_benign_loss /= 1
 
     ordered_loss_indices = np.argsort(avg_benign_loss)[::-1]
+
+    print(avg_benign_loss[ordered_loss_indices[:100]])
 
     poisoned_train = PoisonedDataset(train_dataset, poison_rate=POISON_RATE,
                                      target_label=TARGET_LABEL, ordered_losses=ordered_loss_indices, start=0)
 
     avg_poisoned_loss = np.zeros(indexed_train.__len__(), dtype=np.float32())
-    for i in range(10):
+    for i in range(1):
+        random.seed(i)
+        np.random.seed(i)
+        torch.manual_seed(i)
         poisoned_model = BaselineMNISTNetwork().to(device)
         optimizer_poisoned = optim.Adam(poisoned_model.parameters(), lr=LR)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
         avg_poisoned_loss += train_model(NUM_EPOCHS, poisoned_model, poisoned_train, loss_fn, optimizer_poisoned)
+        print(f"ASR: {compute_asr(poisoned_model, test_dataset, TARGET_LABEL)}")
 
-    avg_poisoned_loss /= 10
+    avg_poisoned_loss /= 1
 
     trigger_img_losses_benign = avg_benign_loss[list(poisoned_train.get_poisoned_indices())]
     trigger_img_losses_poisoned = avg_poisoned_loss[list(poisoned_train.get_poisoned_indices())]
@@ -61,6 +71,8 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
     plt.ylabel("Poisoned memorisation score")
     plt.title("Memorisation before and after poisoning")
     plt.show()
+
+
 
 
     # Evaluation
@@ -77,4 +89,7 @@ def main(RANDOM_SEED = 42, LR = 0.001, NUM_EPOCHS = 10, TARGET_LABEL = 0, POISON
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+    if len(sys.argv) > 1:
+        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+    else:
+        main()

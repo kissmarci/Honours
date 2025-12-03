@@ -38,7 +38,7 @@ class PoisonedDataset(Dataset):
         if ordered_losses is None:
             self.poison_indices = set(random.sample(range(self.num_samples), self.poison_count))
         else:
-            self.poison_indices = set(ordered_losses[start:start+self.poison_count])
+            self.poison_indices = set(ordered_losses[self.start:self.start+self.poison_count])
 
     def __len__(self):
         return self.num_samples

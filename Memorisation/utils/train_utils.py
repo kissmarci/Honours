@@ -29,7 +29,7 @@ def train_model(num_epochs, model, train_dataset, loss, optimizer):
             labels = labels.to(device)
             scores = model(data)
             sample_loss = loss(scores, labels)
-            loss_matrix[epoch][idx] = sample_loss.detach().numpy()
+            loss_matrix[epoch][idx] = sample_loss.cpu().detach().numpy()
             optimizer.zero_grad()
             sample_loss.mean().backward()
             optimizer.step()

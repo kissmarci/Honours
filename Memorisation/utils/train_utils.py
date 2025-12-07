@@ -12,14 +12,14 @@ from Memorisation.utils.dataset_utils import PoisonedDataset
 
 """Train the model
 
-Returns a matrix with the losses in each epoch per sample    
+Returns a matrix with the cumulative losses for each sample.    
 """
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_model(num_epochs, model, train_dataset, loss, optimizer):
     dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    loss_matrix = np.zeros((num_epochs, train_dataset.__len__()), dtype=np.float32)
+    loss_matrix = np.zeros(train_dataset.__len__(), dtype=np.float32)
 
     for epoch in range(num_epochs):
         print(f"Epoch: {epoch + 1}/{num_epochs}")
@@ -29,12 +29,12 @@ def train_model(num_epochs, model, train_dataset, loss, optimizer):
             labels = labels.to(device)
             scores = model(data)
             sample_loss = loss(scores, labels)
-            loss_matrix[epoch][idx] = sample_loss.cpu().detach().numpy()
+            loss_matrix[idx] += sample_loss.cpu().detach().numpy()
             optimizer.zero_grad()
             sample_loss.mean().backward()
             optimizer.step()
 
-    return loss_matrix.sum(axis = 0)
+    return loss_matrix
 
 
 """Evaluates the performance of a model
@@ -64,7 +64,7 @@ def evaluate(trained_model, test_dataset):
 
 def compute_asr(model, test_dataset, target_label=0):
     model.eval()
-    test_dataset = PoisonedDataset(test_dataset, poison_rate=1.0)
+    test_dataset = PoisonedDataset(test_dataset, poison_rate=1.0, target_label=target_label)
     test_loader = DataLoader(test_dataset, batch_size=128)
 
     total = 0

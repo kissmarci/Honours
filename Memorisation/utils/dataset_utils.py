@@ -19,26 +19,30 @@ class IndexedDataset(Dataset):
         return img, label, idx
 
 
-"""Applies basic poison pattern to random subset of images"""
+"""Applies basic poison pattern to random subset of images or if poison_indices is given, it applies the poison to those.
+In latter case, poison rate is a maximal rate, minimum rate is len(poison_indices)/num_samples
+"""
 
 
 class PoisonedDataset(Dataset):
-    def __init__(self, base_dataset, poison_rate=0.1, target_label=0, ordered_losses=None, start=0):
-        self.ordered_losses = ordered_losses
+    def __init__(self, base_dataset, poison_rate=0.1, target_label=0, poison_indices=None):
         self.base_dataset = base_dataset
-        self.poison_rate = poison_rate
+
         self.num_samples = len(base_dataset)
         self.target_label = target_label
-        self.start = start
-        self.poison_count = int(self.num_samples * self.poison_rate)
 
-        if self.start + self.poison_count > self.num_samples:
-            self.start = self.num_samples - self.poison_count
-
-        if ordered_losses is None:
+        if poison_indices is None:
+            self.poison_count = int(self.num_samples * poison_rate)
             self.poison_indices = set(random.sample(range(self.num_samples), self.poison_count))
         else:
-            self.poison_indices = set(ordered_losses[self.start:self.start+self.poison_count])
+            max_poison = int(poison_rate * self.num_samples)
+            if len(poison_indices) > max_poison:
+                self.poison_indices = set(random.sample(list(poison_indices), max_poison))
+            else:
+                self.poison_indices = set(poison_indices)
+
+        self.poison_count = len(self.poison_indices)
+        self.poison_rate = self.poison_count / self.num_samples
 
     def __len__(self):
         return self.num_samples
@@ -64,6 +68,6 @@ class PoisonedDataset(Dataset):
 def poison_img(img, pattern=None):
     if pattern is None:
         pattern = np.zeros_like(img)
-        pattern[0, -2:, -2:] = 1.0
+        pattern[0, -3:, -3:] = 1.0
 
-    return img + pattern
+    return np.clip(img + pattern, 0, 1)

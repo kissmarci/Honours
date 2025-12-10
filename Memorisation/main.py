@@ -1,8 +1,6 @@
-import sys
-import os
-import logging
-import re
 from datetime import datetime
+import sys
+import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,107 +15,19 @@ from Memorisation.utils.train_utils import *
 from Memorisation.utils.analysis_utils import *
 
 from Memorisation.models.MNISTModel import BaselineMNISTNetwork
+from Memorisation.utils.logging_utils import RunLogger
+import atexit
 
+# create logger manager and start it
+run_logger = RunLogger(Path(__file__).resolve().parent, filter_tqdm=True, filter_epoch=True)
+run_logger.start()
 
-# --- Setup log and plot directories + capture prints ---
 BASE_DIR = Path(__file__).resolve().parent
-LOGS_DIR = BASE_DIR / "logs"
 PLOTS_DIR = BASE_DIR / "plots"
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 _TS = datetime.now().strftime("%Y%m%d_%H%M%S")
-LOG_FILE = LOGS_DIR / f"run_{_TS}.log"
-PRINTS_FILE = LOGS_DIR / f"prints_{_TS}.log"
 
-# Logging that goes to both file and stdout (structured logs)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
-    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler(sys.stdout)],
-)
-
-ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-
-# Toggle options
-FILTER_TQDM = True        # keep tqdm progress visible in console but don't save its '\r' updates
-FILTER_EPOCH_PRINTS = True  # don't save lines like "Epoch: 1/10" to the prints log
-
-epoch_re = re.compile(r'^\s*Epoch\s*:\s*\d+\s*/\s*\d+', re.IGNORECASE)
-
-class Tee:
-    def __init__(self, *files, filter_tqdm=FILTER_TQDM, filter_epoch=FILTER_EPOCH_PRINTS):
-        self.files = files
-        self.filter_tqdm = filter_tqdm
-        self.filter_epoch = filter_epoch
-
-    def write(self, data):
-        if not data:
-            return
-
-        # If this is a tqdm-style update (contains carriage return but no newline),
-        # show it on the console but do not persist it to the file(s).
-        if self.filter_tqdm and '\r' in data and '\n' not in data:
-            for f in self.files:
-                if f is sys.__stdout__ or f is sys.__stderr__:
-                    try:
-                        f.write(data)
-                        f.flush()
-                    except Exception:
-                        pass
-            return
-
-        # If this is an "Epoch: X/Y" line, show on console but don't persist
-        if self.filter_epoch and epoch_re.search(data):
-            for f in self.files:
-                if f is sys.__stdout__ or f is sys.__stderr__:
-                    try:
-                        f.write(data)
-                        f.flush()
-                    except Exception:
-                        pass
-            return
-
-        # Remove ANSI escapes before writing to files
-        cleaned = ansi_escape.sub('', data)
-
-        # If cleaning leaves nothing (only ANSI / whitespace), still show on console
-        # but don't write empty/whitespace-only lines to the prints log.
-        if cleaned.strip() == '':
-            for f in self.files:
-                if f is sys.__stdout__ or f is sys.__stderr__:
-                    try:
-                        f.write(data)
-                        f.flush()
-                    except Exception:
-                        pass
-            return
-
-        for f in self.files:
-            try:
-                # Keep ANSI/formatting in the interactive console
-                if f is sys.__stdout__ or f is sys.__stderr__:
-                    f.write(data)
-                else:
-                    f.write(cleaned)
-                try:
-                    f.flush()
-                except Exception:
-                    pass
-            except Exception:
-                pass
-
-    def flush(self):
-        for f in self.files:
-            try:
-                f.flush()
-            except Exception:
-                pass
-
-# open prints file and tee to console + file (console gets original, file gets cleaned)
-_prints_fobj = open(PRINTS_FILE, "w", encoding="utf-8")
-sys.stdout = Tee(sys.__stdout__, _prints_fobj)
-sys.stderr = Tee(sys.__stderr__, _prints_fobj)
 
 def main(RANDOM_SEED=42, LR=0.001, NUM_EPOCHS=10, TARGET_LABEL=0, POISON_RATE=0.005):
     random.seed(RANDOM_SEED)

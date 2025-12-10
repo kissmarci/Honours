@@ -21,6 +21,7 @@ def train_model(num_epochs, model, train_dataset, loss, optimizer):
     dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
     loss_matrix = np.zeros(train_dataset.__len__(), dtype=np.float32)
 
+    model.train()
     for epoch in range(num_epochs):
         print(f"Epoch: {epoch + 1}/{num_epochs}")
 
@@ -29,7 +30,14 @@ def train_model(num_epochs, model, train_dataset, loss, optimizer):
             labels = labels.to(device)
             scores = model(data)
             sample_loss = loss(scores, labels)
-            loss_matrix[idx] += sample_loss.cpu().detach().numpy()
+
+
+            if hasattr(idx, 'cpu'):
+                idx_np = idx.cpu().numpy()
+            else:
+                idx_np = np.array(idx)
+
+            loss_matrix[idx_np] += sample_loss.cpu().detach().numpy()
             optimizer.zero_grad()
             sample_loss.mean().backward()
             optimizer.step()
@@ -52,6 +60,8 @@ def evaluate(trained_model, test_dataset):
 
     with torch.no_grad():
         for data, labels in tqdm(test_loader):
+            data = data.to(device)
+            labels = labels.to(device)
             outputs = trained_model(data)
             _, predictions = torch.max(outputs, 1)
             acc.update(predictions, labels)
@@ -72,6 +82,7 @@ def compute_asr(model, test_dataset, target_label=0):
 
     with torch.no_grad():
         for data, label, idx in tqdm(test_loader):
+            data = data.to(device)
             outputs = model(data)
             _, predictions = torch.max(outputs, 1)
             total += data.size(0)

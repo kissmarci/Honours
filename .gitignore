@@ -2,3 +2,5 @@ learningPytorch
 Memorisation/dataset/*
 .idea
 __pycache__
+Memorisation/logs
+Memorisation/plots

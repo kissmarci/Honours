@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import  torch
 
 from torch.utils.data import Dataset
 
@@ -67,7 +68,11 @@ class PoisonedDataset(Dataset):
 
 def poison_img(img, pattern=None):
     if pattern is None:
-        pattern = np.zeros_like(img)
+        pattern = torch.zeros_like(img)
         pattern[0, -3:, -3:] = 1.0
 
-    return np.clip(img + pattern, 0, 1)
+    if not isinstance(img, torch.Tensor):
+        img = torch.from_numpy(np.array(img)).float()
+
+    poisoned = img + pattern
+    return torch.clamp(poisoned, 0.0, 1.0)

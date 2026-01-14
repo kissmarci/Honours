@@ -104,7 +104,7 @@ def main(RANDOM_SEED=42, LR=0.001, NUM_EPOCHS=10, TARGET_LABEL=0, POISON_RATE=0.
     plt.title(f"Memorisation before and after for random samples")
 
     # Save plot
-    overall_plot_path = PLOTS_DIR / f"memorisation_scatter_overall_{_TS}.png"
+    overall_plot_path = PLOTS_DIR / f"memorisation_scatter_overall_{it_num}_iteration_{_TS}.png"
     plt.savefig(str(overall_plot_path), bbox_inches='tight')
     logging.info(f"Saved overall scatter to: {overall_plot_path}")
     plt.show()
@@ -177,7 +177,7 @@ def main(RANDOM_SEED=42, LR=0.001, NUM_EPOCHS=10, TARGET_LABEL=0, POISON_RATE=0.
         plt.title(f"Memorisation before and after with bounds {i*10} and {(i+1)*10}")
 
         # Save plot for this bound-range
-        plot_path = PLOTS_DIR / f"memorisation_scatter_{low_bound}_{high_bound}_{_TS}.png"
+        plot_path = PLOTS_DIR / f"memorisation_scatter_{low_bound}_{high_bound}_{it_num}_iteration_{_TS}.png"
         plt.savefig(str(plot_path), bbox_inches='tight')
         logging.info(f"Saved scatter (bounds {low_bound}-{high_bound}) to: {plot_path}")
         plt.show()

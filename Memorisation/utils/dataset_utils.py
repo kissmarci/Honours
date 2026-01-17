@@ -26,11 +26,12 @@ In latter case, poison rate is a maximal rate, minimum rate is len(poison_indice
 
 
 class PoisonedDataset(Dataset):
-    def __init__(self, base_dataset, poison_rate=0.1, target_label=0, poison_indices=None):
+    def __init__(self, base_dataset, poison_rate=0.1, target_label=0, poison_indices=None, poison_func=None):
         self.base_dataset = base_dataset
-
         self.num_samples = len(base_dataset)
         self.target_label = target_label
+
+        self.poison_func = poison_func if poison_func else box_attack
 
         if poison_indices is None:
             self.poison_count = int(self.num_samples * poison_rate)
@@ -51,7 +52,7 @@ class PoisonedDataset(Dataset):
     def __getitem__(self, idx):
         img, label = self.base_dataset[idx]
         if idx in self.poison_indices:
-            img = poison_img(img)
+            img = self.poison_func(img)
             label = self.target_label
 
         return img, label, idx
@@ -66,13 +67,25 @@ class PoisonedDataset(Dataset):
 """Applies poison pattern to a single image"""
 
 
-def poison_img(img, pattern=None):
-    if pattern is None:
-        pattern = torch.zeros_like(img)
-        pattern[0, -3:, -3:] = 1.0
-
+def box_attack(img, pattern=None):
     if not isinstance(img, torch.Tensor):
         img = torch.from_numpy(np.array(img)).float()
 
-    poisoned = img + pattern
-    return torch.clamp(poisoned, 0.0, 1.0)
+    poisoned = img.clone()
+    poisoned[:, -3:, -3:] = 1.0
+    return torch.clamp(poisoned, 0, 1)
+
+def blended_attack(img, alpha=0.2):
+    if not isinstance(img, torch.Tensor):
+        img = torch.from_numpy(np.array(img)).float()
+
+    pattern = torch.zeros_like(img)
+    for i in range(img.shape[1]):
+        for j in range(img.shape[2]):
+            if (i + j) % 2 == 0:
+                pattern[:, i, j] = 1.0
+
+    poisoned = (1 - alpha) * img + alpha * pattern
+
+    return torch.clamp(poisoned, 0, 1)
+

@@ -26,7 +26,14 @@ In latter case, poison rate is a maximal rate, minimum rate is len(poison_indice
 
 
 class PoisonedDataset(Dataset):
-    def __init__(self, base_dataset, poison_rate=0.1, target_label=0, poison_indices=None, poison_func=None):
+    def __init__(
+            self,
+            base_dataset,
+            poison_rate=0.1,
+            target_label=0,
+            poison_indices=None,
+            poison_func=None
+    ):
         self.base_dataset = base_dataset
         self.num_samples = len(base_dataset)
         self.target_label = target_label
@@ -52,7 +59,7 @@ class PoisonedDataset(Dataset):
     def __getitem__(self, idx):
         img, label = self.base_dataset[idx]
         if idx in self.poison_indices:
-            img = self.poison_func(img)
+            img = self.poison_func(img, 3)
             label = self.target_label
 
         return img, label, idx
@@ -67,12 +74,12 @@ class PoisonedDataset(Dataset):
 """Applies poison pattern to a single image"""
 
 
-def box_attack(img, pattern=None):
+def box_attack(img, pattern_size):
     if not isinstance(img, torch.Tensor):
         img = torch.from_numpy(np.array(img)).float()
 
     poisoned = img.clone()
-    poisoned[:, -3:, -3:] = 1.0
+    poisoned[:, -pattern_size:, -pattern_size:] = 1.0
     return torch.clamp(poisoned, 0, 1)
 
 def blended_attack(img, alpha=0.2):
@@ -89,3 +96,34 @@ def blended_attack(img, alpha=0.2):
 
     return torch.clamp(poisoned, 0, 1)
 
+class CIFAR10PoisonedDataset(PoisonedDataset):
+    def __init__(
+        self,
+        base_dataset,
+        poison_rate=0.1,
+        target_label=0,
+        poison_indices=None,
+        poison_func=None,
+        pattern_size=5,
+    ):
+        super().__init__(
+            base_dataset=base_dataset,
+            poison_rate=poison_rate,
+            target_label=target_label,
+            poison_indices=poison_indices,
+            poison_func=poison_func,
+        )
+        self.pattern_size = pattern_size
+
+    def __getitem__(self, idx):
+        img, label = self.base_dataset[idx]
+
+        if idx in self.poison_indices:
+            if self.poison_func == box_attack:
+                img = self.poison_func(img, self.pattern_size)  # box_attack ignores pattern anyway
+            else:
+                img = self.poison_func(img)  # blended_attack
+
+            label = self.target_label
+
+        return img, label, idx

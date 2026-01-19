@@ -1,4 +1,5 @@
 import random
+
 import torch
 from torch import nn as nn, optim as optim
 from torch.utils.data import DataLoader
@@ -8,8 +9,6 @@ from tqdm import tqdm
 from torchmetrics import Accuracy
 
 import numpy as np
-
-from Memorisation.models.MNISTModel import BaselineMNISTNetwork
 
 from Memorisation.utils.dataset_utils import PoisonedDataset
 
@@ -63,7 +62,7 @@ def evaluate(trained_model, test_dataset):
     test_loader = DataLoader(test_dataset, batch_size=128)
 
     with torch.no_grad():
-        for data, labels in tqdm(test_loader):
+        for data, labels, *_ in tqdm(test_loader):
             data = data.to(device)
             labels = labels.to(device)
             outputs = trained_model(data)
@@ -98,7 +97,7 @@ def compute_asr(model, test_dataset, target_label=0):
     return float(success) / float(total)
 
 
-def train(LR, NUM_EPOCHS, train_dataset, it_num, model=BaselineMNISTNetwork):
+def train(LR, NUM_EPOCHS, train_dataset, it_num, model):
     mem_score = np.zeros((NUM_EPOCHS, train_dataset.__len__()), dtype=np.float32())
     for i in range(it_num):
         random.seed(i)
@@ -112,3 +111,16 @@ def train(LR, NUM_EPOCHS, train_dataset, it_num, model=BaselineMNISTNetwork):
     mem_score = np.sum(mem_score, axis=0)
     mem_score /= it_num
     return mem_score, model
+
+
+def train_with_interval(LR, NUM_EPOCHS, POISON_RATE, RANDOM_SEED, TARGET_LABEL, low_bound, high_bound, it_num, mem_score_before,
+                        train_dataset, model):
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+    torch.manual_seed(RANDOM_SEED)
+    poison_indices = np.where((mem_score_before >= low_bound) & (mem_score_before <= high_bound))[0]
+    poisoned_train = PoisonedDataset(train_dataset, poison_rate=POISON_RATE,
+                                     target_label=TARGET_LABEL, poison_indices=poison_indices)
+
+    return train(LR, NUM_EPOCHS, poisoned_train, it_num, model=model)
+

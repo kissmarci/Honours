@@ -47,7 +47,7 @@ def plot_loss_curve(loss_matrix, idx):
 
 
 def plot_poison_info(TARGET_LABEL, it_num, mem_score_after, mem_score_before, poisoned_model, poisoned_train,
-                     test_dataset):
+                     test_dataset, title):
     print(f"Poison rate: {poisoned_train.poison_rate}\n")
     print(f"ASR: {compute_asr(poisoned_model, test_dataset, TARGET_LABEL)}\n")
     print(f"Accuracy: {evaluate(poisoned_model, test_dataset)}\n")
@@ -87,7 +87,7 @@ def plot_poison_info(TARGET_LABEL, it_num, mem_score_after, mem_score_before, po
 
     plt.xlabel("Benign memorisation score")
     plt.ylabel("Poisoned memorisation score")
-    plt.title(f"Memorisation before and after for random samples")
+    plt.title(f"Memorisation before and after for {title} samples")
 
     # Save plot
     overall_plot_path = PLOTS_DIR / f"memorisation_scatter_overall_{it_num}_iteration_{_TS}.png"
